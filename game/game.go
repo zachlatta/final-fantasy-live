@@ -54,8 +54,6 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, erro
 		return Game{}, err
 	}
 
-	playerOne.SetWindow(e.Director.Window())
-
 	return Game{
 		Video:       vid,
 		RomPath:     romPath,
