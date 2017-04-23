@@ -2,8 +2,6 @@ package facebook
 
 import (
 	"fmt"
-
-	fb "github.com/huandu/facebook"
 )
 
 type ReactionType int
@@ -25,23 +23,19 @@ type Reaction struct {
 }
 
 func Reactions(id, accessToken string) ([]Reaction, error) {
-	res, err := fb.Get(fmt.Sprintf("/%s/reactions", id), fb.Params{
-		"access_token": accessToken,
-	})
+	session := authedSession(accessToken)
+	rawReacts, err := getAllPaginated(session, fmt.Sprintf("/%s/reactions", id), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	rawReacts := res["data"].([]interface{})
 	reacts := make([]Reaction, len(rawReacts))
 
 	for i, rawReact := range rawReacts {
-		coerced := rawReact.(map[string]interface{})
-
 		reacts[i] = Reaction{
-			AuthorId:   coerced["id"].(string),
-			AuthorName: coerced["name"].(string),
-			Type:       reactionTypeForName(coerced["type"].(string)),
+			AuthorId:   rawReact["id"].(string),
+			AuthorName: rawReact["name"].(string),
+			Type:       reactionTypeForName(rawReact["type"].(string)),
 		}
 	}
 

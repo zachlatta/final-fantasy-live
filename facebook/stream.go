@@ -7,10 +7,8 @@ import (
 )
 
 func currentId(accessToken string) (string, error) {
-	res, err := fb.Get("/me", fb.Params{
-		"fields":       "id",
-		"access_token": accessToken,
-	})
+	session := authedSession(accessToken)
+	res, err := session.Get("/me", fb.Params{"fields": "id"})
 	if err != nil {
 		return "", err
 	}
