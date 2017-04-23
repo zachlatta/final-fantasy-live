@@ -1,7 +1,6 @@
 package emulator
 
 import (
-	"log"
 	"runtime"
 
 	"github.com/go-gl/gl/v2.1/gl"
@@ -27,23 +26,34 @@ type Emulator struct {
 	PlayerTwoController ui.ControllerAdapter
 
 	Director *ui.Director
+
+	Settings Settings
 }
 
 func NewEmulator(settings Settings, controllerOne ui.ControllerAdapter, controllerTwo ui.ControllerAdapter) (*Emulator, error) {
-	log.Println(settings)
+	e := &Emulator{
+		PlayerOneController: controllerOne,
+		PlayerTwoController: controllerTwo,
+		Settings:            settings,
+	}
+
+	return e, nil
+}
+
+func (e *Emulator) Play(romPath string) error {
 	// initialize audio
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
 	audio := ui.NewAudio()
 	if err := audio.Start(); err != nil {
-		return nil, err
+		return err
 	}
 	defer audio.Stop()
 
 	// initialize glfw
 	if err := glfw.Init(); err != nil {
-		return nil, err
+		return err
 	}
 	defer glfw.Terminate()
 
@@ -51,36 +61,26 @@ func NewEmulator(settings Settings, controllerOne ui.ControllerAdapter, controll
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 
-	window, err := glfw.CreateWindow(settings.Width*settings.Scale, settings.Height*settings.Scale, settings.Title, nil, nil)
+	window, err := glfw.CreateWindow(e.Settings.Width*e.Settings.Scale, e.Settings.Height*e.Settings.Scale, e.Settings.Title, nil, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	window.MakeContextCurrent()
 
 	// initialize gl
 	if err := gl.Init(); err != nil {
-		return nil, err
+		return err
 	}
 	gl.Enable(gl.TEXTURE_2D)
 
-	controllerOne.SetWindow(window)
-	controllerTwo.SetWindow(window)
+	e.PlayerOneController.SetWindow(window)
+	e.PlayerTwoController.SetWindow(window)
 
-	d := ui.NewDirector(window, audio, controllerOne, controllerTwo)
+	e.Director = ui.NewDirector(window, audio, e.PlayerOneController, e.PlayerTwoController)
 
-	e := &Emulator{
-		PlayerOneController: controllerOne,
-		PlayerTwoController: controllerTwo,
-		Director:            d,
-	}
-
-	e.Play("/Users/harrison/Downloads/Mario Bros. (World).nes")
-
-	return e, nil
-}
-
-func (e *Emulator) Play(romPath string) {
 	e.Director.Start([]string{romPath})
+
+	return nil
 }
 
 type Settings struct {
