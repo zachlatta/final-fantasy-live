@@ -63,6 +63,14 @@ func (g Game) Start() {
 			action = nes.ButtonUp
 		case "down":
 			action = nes.ButtonDown
+		case "start":
+			action = nes.ButtonStart
+		case "select":
+			action = nes.ButtonSelect
+		case "a":
+			action = nes.ButtonA
+		case "b":
+			action = nes.ButtonB
 		}
 
 		if action != -1 {
