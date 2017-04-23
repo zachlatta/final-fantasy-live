@@ -12,8 +12,21 @@ import (
 )
 
 const (
-	reactPollInterval = 2 * time.Second
+	actionInterval = 15
+
+	buttonPressTime = 1 * time.Second
 )
+
+var buttonToString = map[int]string{
+	nes.ButtonUp:     "up",
+	nes.ButtonDown:   "down",
+	nes.ButtonRight:  "right",
+	nes.ButtonLeft:   "left",
+	nes.ButtonA:      "A",
+	nes.ButtonB:      "B",
+	nes.ButtonStart:  "start",
+	nes.ButtonSelect: "select",
+}
 
 type Game struct {
 	Video       facebook.LiveVideo
@@ -22,6 +35,8 @@ type Game struct {
 
 	playerOne ui.ControllerAdapter
 	playerTwo ui.ControllerAdapter
+
+	buttonsToPress chan int
 
 	comments        chan facebook.Comment
 	lastCommentTime time.Time
@@ -36,6 +51,8 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) Game {
 		playerOne: &ui.BasicControllerAdapter{},
 		playerTwo: &ui.DummyControllerAdapter{},
 
+		buttonsToPress: make(chan int),
+
 		comments:        make(chan facebook.Comment),
 		lastCommentTime: time.Now(),
 	}
@@ -46,62 +63,92 @@ func (g Game) Start() {
 	fmt.Println("ID:", g.Video.Id)
 	fmt.Println("Direct your stream to:", g.Video.StreamUrl)
 
-	go g.listenForComments()
-	go g.handleComments()
+	go g.listenForReactions()
+	go g.handleButtonPresses()
 
 	// Emulator must be on main thread
 	g.startEmulator()
 }
 
-func (g Game) listenForComments() {
-	ticker := time.NewTicker(reactPollInterval)
+func (g Game) listenForReactions() {
+	ticker := time.NewTicker(1 * time.Second)
+	timer := actionInterval
 
 	for range ticker.C {
-		comments, err := facebook.Comments(g.Video.Id, g.AccessToken)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error listening for comments:", err)
-			os.Exit(1)
-		}
+		fmt.Printf("%d...\n", timer)
+		timer -= 1
 
-		for _, comment := range comments {
-			if comment.Created.After(g.lastCommentTime) {
-				g.comments <- comment
-				g.lastCommentTime = comment.Created
+		if timer == 0 {
+			timer = actionInterval
+
+			reactions, err := facebook.Reactions(g.Video.Id, g.AccessToken)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error listening for reactions:", err)
+				os.Exit(1)
 			}
+
+			if len(reactions) == 0 {
+				fmt.Println("No reactions. Skipping button press.")
+				continue
+			}
+
+			mostCommonReact := mostCommonReact(reactions)
+
+			g.buttonsToPress <- reactionToButton(mostCommonReact)
 		}
 	}
 }
 
-func (g Game) handleComments() {
-	for comment := range g.comments {
-		fmt.Println("New comment:", comment.Message)
+func reactionToButton(reaction facebook.ReactionType) int {
+	switch reaction {
+	case facebook.ReactionLike:
+		return nes.ButtonUp
+	case facebook.ReactionLove:
+		return nes.ButtonDown
+	case facebook.ReactionHaha:
+		return nes.ButtonLeft
+	case facebook.ReactionWow:
+		return nes.ButtonRight
+	case facebook.ReactionSad:
+		return nes.ButtonB
+	case facebook.ReactionAngry:
+		return nes.ButtonA
+	default:
+		return -1
+	}
+}
 
-		action := -1
+// Returns the most common reaction given an array of them
+func mostCommonReact(reactions []facebook.Reaction) facebook.ReactionType {
+	if len(reactions) == 0 {
+		return -1
+	}
 
-		switch comment.Message {
-		case "left":
-			action = nes.ButtonLeft
-		case "right":
-			action = nes.ButtonRight
-		case "up":
-			action = nes.ButtonUp
-		case "down":
-			action = nes.ButtonDown
-		case "start":
-			action = nes.ButtonStart
-		case "select":
-			action = nes.ButtonSelect
-		case "a":
-			action = nes.ButtonA
-		case "b":
-			action = nes.ButtonB
+	reactionCounts := map[facebook.ReactionType]int{}
+
+	for _, reaction := range reactions {
+		reactionCounts[reaction.Type] += 1
+	}
+
+	var mostCommon facebook.ReactionType
+	var maxCount int
+
+	for reactionType, occurances := range reactionCounts {
+		if occurances > maxCount {
+			mostCommon = reactionType
+			maxCount = occurances
 		}
+	}
 
-		if action != -1 {
-			g.playerOne.Trigger(action, true)
-			time.Sleep(1 * time.Second)
-			g.playerOne.Trigger(action, false)
-		}
+	return mostCommon
+}
+
+func (g Game) handleButtonPresses() {
+	for action := range g.buttonsToPress {
+		fmt.Printf("Pressing %s....\n", buttonToString[action])
+		g.playerOne.Trigger(action, true)
+		time.Sleep(buttonPressTime)
+		g.playerOne.Trigger(action, false)
 	}
 }
 
