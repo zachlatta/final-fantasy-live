@@ -47,8 +47,32 @@ func (g Game) Start() {
 	fmt.Println("Direct your stream to:", g.Video.StreamUrl)
 
 	go g.listenForComments()
-	go g.startEmulator()
+	go g.handleComments()
 
+	// Emulator must be on main thread
+	g.startEmulator()
+}
+
+func (g Game) listenForComments() {
+	ticker := time.NewTicker(reactPollInterval)
+
+	for range ticker.C {
+		comments, err := facebook.Comments(g.Video.Id, g.AccessToken)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error listening for comments:", err)
+			os.Exit(1)
+		}
+
+		for _, comment := range comments {
+			if comment.Created.After(g.lastCommentTime) {
+				g.comments <- comment
+				g.lastCommentTime = comment.Created
+			}
+		}
+	}
+}
+
+func (g Game) handleComments() {
 	for comment := range g.comments {
 		fmt.Println("New comment:", comment.Message)
 
@@ -77,25 +101,6 @@ func (g Game) Start() {
 			g.playerOne.Trigger(action, true)
 			time.Sleep(1 * time.Second)
 			g.playerOne.Trigger(action, false)
-		}
-	}
-}
-
-func (g Game) listenForComments() {
-	ticker := time.NewTicker(reactPollInterval)
-
-	for range ticker.C {
-		comments, err := facebook.Comments(g.Video.Id, g.AccessToken)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error listening for comments:", err)
-			os.Exit(1)
-		}
-
-		for _, comment := range comments {
-			if comment.Created.After(g.lastCommentTime) {
-				g.comments <- comment
-				g.lastCommentTime = comment.Created
-			}
 		}
 	}
 }
