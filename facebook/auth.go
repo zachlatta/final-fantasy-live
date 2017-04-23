@@ -34,6 +34,8 @@ func Login(appId, appSecret string) (accessToken string, err error) {
 
 		accessToken = token
 
+		fmt.Fprintln(w, "Success!")
+
 		srv.Close()
 	})
 
