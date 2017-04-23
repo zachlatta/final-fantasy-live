@@ -32,9 +32,7 @@ type Game struct {
 	Video       facebook.LiveVideo
 	RomPath     string
 	AccessToken string
-
-	playerOne ui.ControllerAdapter
-	playerTwo ui.ControllerAdapter
+	Emulator    *emulator.Emulator
 
 	buttonsToPress chan int
 
@@ -42,20 +40,33 @@ type Game struct {
 	lastCommentTime time.Time
 }
 
-func New(vid facebook.LiveVideo, romPath string, accessToken string) Game {
+func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, error) {
+	playerOne := ui.NewKeyboardControllerAdapter()
+	playerTwo := &ui.DummyControllerAdapter{}
+
+	e, err := emulator.NewEmulator(
+		emulator.DefaultSettings,
+		playerOne,
+		playerTwo,
+	)
+
+	if err != nil {
+		return Game{}, err
+	}
+
+	playerOne.SetWindow(e.Director.Window())
+
 	return Game{
 		Video:       vid,
 		RomPath:     romPath,
 		AccessToken: accessToken,
-
-		playerOne: &ui.BasicControllerAdapter{},
-		playerTwo: &ui.DummyControllerAdapter{},
+		Emulator:    e,
 
 		buttonsToPress: make(chan int),
 
 		comments:        make(chan facebook.Comment),
 		lastCommentTime: time.Now(),
-	}
+	}, nil
 }
 
 func (g Game) Start() {
@@ -146,16 +157,12 @@ func mostCommonReact(reactions []facebook.Reaction) facebook.ReactionType {
 func (g Game) handleButtonPresses() {
 	for action := range g.buttonsToPress {
 		fmt.Printf("Pressing %s....\n", buttonToString[action])
-		g.playerOne.Trigger(action, true)
-		time.Sleep(buttonPressTime)
-		g.playerOne.Trigger(action, false)
+		g.Emulator.PlayerOneController.Trigger(action, true)
+		time.Sleep(time.Second / 5)
+		g.Emulator.PlayerOneController.Trigger(action, false)
 	}
 }
 
 func (g Game) startEmulator() {
-	emulator.Emulate(
-		g.RomPath,
-		g.playerOne,
-		g.playerTwo,
-	)
+	g.Emulator.Play(g.RomPath)
 }
