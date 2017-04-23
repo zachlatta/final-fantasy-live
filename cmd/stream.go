@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/zachlatta/nostalgic-rewind/facebook"
+	"github.com/zachlatta/nostalgic-rewind/game"
 )
 
 var accessToken string
@@ -26,6 +28,16 @@ var streamCmd = &cobra.Command{
 		gameName := args[0]
 
 		fmt.Printf("Starting %s...\n", gameName)
+
+		vid, err := facebook.CreateLiveVideo(accessToken)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating stream:", err)
+			os.Exit(1)
+		}
+
+		game := game.New(vid, gameName, accessToken)
+
+		game.Start()
 	},
 }
 
