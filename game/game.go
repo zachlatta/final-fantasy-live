@@ -19,26 +19,36 @@ type Game struct {
 	Video       facebook.LiveVideo
 	RomPath     string
 	AccessToken string
-
-	playerOne ui.ControllerAdapter
-	playerTwo ui.ControllerAdapter
+	Emulator    *emulator.Emulator
 
 	comments        chan facebook.Comment
 	lastCommentTime time.Time
 }
 
-func New(vid facebook.LiveVideo, romPath string, accessToken string) Game {
+func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, error) {
+	playerOne := ui.NewKeyboardControllerAdapter()
+	playerTwo := &ui.DummyControllerAdapter{}
+
+	e, err := emulator.NewEmulator(
+		emulator.DefaultSettings,
+		playerOne,
+		playerTwo,
+	)
+
+	if err != nil {
+		return Game{}, err
+	}
+
+	playerOne.SetWindow(e.Director.Window())
+
 	return Game{
-		Video:       vid,
-		RomPath:     romPath,
-		AccessToken: accessToken,
-
-		playerOne: &ui.BasicControllerAdapter{},
-		playerTwo: &ui.DummyControllerAdapter{},
-
+		Video:           vid,
+		RomPath:         romPath,
+		AccessToken:     accessToken,
+		Emulator:        e,
 		comments:        make(chan facebook.Comment),
 		lastCommentTime: time.Now(),
-	}
+	}, nil
 }
 
 func (g Game) Start() {
@@ -98,17 +108,13 @@ func (g Game) handleComments() {
 		}
 
 		if action != -1 {
-			g.playerOne.Trigger(action, true)
-			time.Sleep(1 * time.Second)
-			g.playerOne.Trigger(action, false)
+			g.Emulator.PlayerOneController.Trigger(action, true)
+			time.Sleep(time.Second / 5)
+			g.Emulator.PlayerOneController.Trigger(action, false)
 		}
 	}
 }
 
 func (g Game) startEmulator() {
-	emulator.Emulate(
-		g.RomPath,
-		g.playerOne,
-		g.playerTwo,
-	)
+	g.Emulator.Play(g.RomPath)
 }

@@ -36,7 +36,11 @@ var streamCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		game := game.New(vid, romPath, accessToken)
+		game, err := game.New(vid, romPath, accessToken)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating game:", err)
+			os.Exit(1)
+		}
 
 		game.Start()
 	},
