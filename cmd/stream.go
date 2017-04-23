@@ -10,9 +10,10 @@ import (
 )
 
 var accessToken string
+var romPath string
 
 var streamCmd = &cobra.Command{
-	Use:   "stream [game]",
+	Use:   "stream [path to rom to play]",
 	Short: "Start a Facebook Live stream.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
@@ -25,9 +26,9 @@ var streamCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		gameName := args[0]
+		romPath := args[0]
 
-		fmt.Printf("Starting %s...\n", gameName)
+		fmt.Printf("Starting %s...\n", romPath)
 
 		vid, err := facebook.CreateLiveVideo(accessToken)
 		if err != nil {
@@ -35,7 +36,7 @@ var streamCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		game := game.New(vid, gameName, accessToken)
+		game := game.New(vid, romPath, accessToken)
 
 		game.Start()
 	},
