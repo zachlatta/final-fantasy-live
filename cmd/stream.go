@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/paked/nes/nes"
+	"github.com/paked/nes/ui"
 	"github.com/spf13/cobra"
+	"github.com/zachlatta/nostalgic-rewind/emulator"
 )
 
 var accessToken string
+var romPath string
 
 var streamCmd = &cobra.Command{
 	Use:   "stream [game]",
@@ -26,10 +30,25 @@ var streamCmd = &cobra.Command{
 		gameName := args[0]
 
 		fmt.Printf("Starting %s...\n", gameName)
+
+		exampleStartMario()
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(streamCmd)
 	streamCmd.Flags().StringVarP(&accessToken, "token", "t", "", "Facebook access token for page to stream from")
+	streamCmd.Flags().StringVarP(&romPath, "rom", "r", "", "Path for the ROM to play")
+}
+
+func exampleStartMario() {
+	// Player One is always holding down left joystick
+	playerOne := &ui.BasicControllerAdapter{}
+	playerOne.Trigger(nes.ButtonLeft, true)
+
+	emulator.Emulate(
+		romPath,
+		playerOne,
+		&ui.DummyControllerAdapter{},
+	)
 }
