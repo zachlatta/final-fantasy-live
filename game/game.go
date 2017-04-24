@@ -9,6 +9,8 @@ import (
 	"github.com/paked/nes/ui"
 	"github.com/zachlatta/nostalgic-rewind/emulator"
 	"github.com/zachlatta/nostalgic-rewind/facebook"
+	"github.com/zachlatta/nostalgic-rewind/obs"
+	"github.com/zachlatta/nostalgic-rewind/util"
 )
 
 const (
@@ -33,6 +35,7 @@ type Game struct {
 	RomPath     string
 	AccessToken string
 	Emulator    *emulator.Emulator
+	Obs         obs.Obs
 
 	buttonsToPress chan int
 
@@ -54,11 +57,14 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, erro
 		return Game{}, err
 	}
 
+	streamUrl, streamKey := util.SplitStreamUrl(vid.StreamUrl)
+
 	return Game{
 		Video:       vid,
 		RomPath:     romPath,
 		AccessToken: accessToken,
 		Emulator:    e,
+		Obs:         obs.New(streamUrl, streamKey),
 
 		buttonsToPress: make(chan int),
 
@@ -72,11 +78,19 @@ func (g Game) Start() {
 	fmt.Println("ID:", g.Video.Id)
 	fmt.Println("Direct your stream to:", g.Video.StreamUrl)
 
+	go g.startObs()
 	go g.listenForReactions()
 	go g.handleButtonPresses()
 
 	// Emulator must be on main thread
 	g.startEmulator()
+}
+
+func (g Game) startObs() {
+	if err := g.Obs.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error running OBS:", err)
+		os.Exit(1)
+	}
 }
 
 func (g Game) listenForReactions() {

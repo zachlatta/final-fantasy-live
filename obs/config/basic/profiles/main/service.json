@@ -1,0 +1,7 @@
+{
+    "settings": {
+        "key": "{{.StreamKey}}",
+        "server": "{{.StreamUrl}}"
+    },
+    "type": "rtmp_custom"
+}
