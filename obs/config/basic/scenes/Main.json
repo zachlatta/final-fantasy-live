@@ -172,7 +172,7 @@
                 "font": {
                     "face": "VT323",
                     "flags": 0,
-                    "size": 36,
+                    "size": 34,
                     "style": "Regular"
                 },
                 "from_file": true,
@@ -200,7 +200,7 @@
                 "font": {
                     "face": "VT323",
                     "flags": 0,
-                    "size": 36,
+                    "size": 34,
                     "style": "Regular"
                 },
                 "from_file": true,
@@ -285,14 +285,18 @@
                 "libobs.hide_scene_item.Most recent presses...": [],
                 "libobs.hide_scene_item.NES Emulator": [],
                 "libobs.hide_scene_item.Next button press in...": [],
+                "libobs.hide_scene_item.Reaction count breakdown...": [],
                 "libobs.hide_scene_item.Total presses...": [],
+                "libobs.hide_scene_item.Total uptime...": [],
                 "libobs.show_scene_item.Background": [],
                 "libobs.show_scene_item.Controller": [],
                 "libobs.show_scene_item.Footer": [],
                 "libobs.show_scene_item.Most recent presses...": [],
                 "libobs.show_scene_item.NES Emulator": [],
                 "libobs.show_scene_item.Next button press in...": [],
-                "libobs.show_scene_item.Total presses...": []
+                "libobs.show_scene_item.Reaction count breakdown...": [],
+                "libobs.show_scene_item.Total presses...": [],
+                "libobs.show_scene_item.Total uptime...": []
             },
             "id": "scene",
             "mixers": 0,
@@ -342,15 +346,15 @@
                         "crop_left": 0,
                         "crop_right": 0,
                         "crop_top": 0,
-                        "name": "Footer",
+                        "name": "Total uptime...",
                         "pos": {
-                            "x": 893.0,
-                            "y": 679.0
+                            "x": 768.0,
+                            "y": 665.0
                         },
                         "rot": 0.0,
                         "scale": {
-                            "x": 0.11203007400035858,
-                            "y": 0.11081080883741379
+                            "x": 1.0,
+                            "y": 1.0
                         },
                         "scale_filter": "disable",
                         "visible": true
@@ -370,7 +374,7 @@
                         "name": "Total presses...",
                         "pos": {
                             "x": 768.0,
-                            "y": 474.0
+                            "y": 607.0
                         },
                         "rot": 0.0,
                         "scale": {
@@ -394,8 +398,33 @@
                         "crop_top": 0,
                         "name": "Most recent presses...",
                         "pos": {
-                            "x": 770.0,
-                            "y": 378.0
+                            "x": 771.0,
+                            "y": 523.0
+                        },
+                        "rot": 0.0,
+                        "scale": {
+                            "x": 1.0,
+                            "y": 1.0
+                        },
+                        "scale_filter": "disable",
+                        "visible": true
+                    },
+                    {
+                        "align": 5,
+                        "bounds": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "bounds_align": 0,
+                        "bounds_type": 0,
+                        "crop_bottom": 0,
+                        "crop_left": 0,
+                        "crop_right": 0,
+                        "crop_top": 0,
+                        "name": "Vote breakdown...",
+                        "pos": {
+                            "x": 767.0,
+                            "y": 345.10000610351562
                         },
                         "rot": 0.0,
                         "scale": {
@@ -419,8 +448,8 @@
                         "crop_top": 0,
                         "name": "Next button press in...",
                         "pos": {
-                            "x": 769.0,
-                            "y": 315.0
+                            "x": 767.0,
+                            "y": 294.0
                         },
                         "rot": 0.0,
                         "scale": {
@@ -445,7 +474,7 @@
                         "name": "Controller",
                         "pos": {
                             "x": 765.0,
-                            "y": 29.0
+                            "y": 20.0
                         },
                         "rot": 0.0,
                         "scale": {
@@ -476,6 +505,31 @@
                         "scale": {
                             "x": 1.0,
                             "y": 1.0
+                        },
+                        "scale_filter": "disable",
+                        "visible": true
+                    },
+                    {
+                        "align": 5,
+                        "bounds": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "bounds_align": 0,
+                        "bounds_type": 0,
+                        "crop_bottom": 0,
+                        "crop_left": 0,
+                        "crop_right": 0,
+                        "crop_top": 0,
+                        "name": "Footer",
+                        "pos": {
+                            "x": 287.0,
+                            "y": 696.0
+                        },
+                        "rot": 0.0,
+                        "scale": {
+                            "x": 0.11203007400035858,
+                            "y": 0.11081080883741379
                         },
                         "scale_filter": "disable",
                         "visible": true
@@ -527,12 +581,68 @@
                 "font": {
                     "face": "VT323",
                     "flags": 0,
-                    "size": 36,
+                    "size": 34,
                     "style": "Regular"
                 },
                 "from_file": true,
                 "text": "Next button press in:",
                 "text_file": "{{.NextButtonPressPath}}"
+            },
+            "sync": 0,
+            "volume": 1.0
+        },
+        {
+            "deinterlace_field_order": 0,
+            "deinterlace_mode": 0,
+            "enabled": true,
+            "flags": 0,
+            "hotkeys": {},
+            "id": "text_ft2_source",
+            "mixers": 0,
+            "monitoring_type": 0,
+            "muted": false,
+            "name": "Vote breakdown...",
+            "push-to-mute": false,
+            "push-to-mute-delay": 0,
+            "push-to-talk": false,
+            "push-to-talk-delay": 0,
+            "settings": {
+                "font": {
+                    "face": "VT323",
+                    "flags": 0,
+                    "size": 34,
+                    "style": "Regular"
+                },
+                "from_file": true,
+                "text_file": "{{.VoteBreakdownPath}}"
+            },
+            "sync": 0,
+            "volume": 1.0
+        },
+        {
+            "deinterlace_field_order": 0,
+            "deinterlace_mode": 0,
+            "enabled": true,
+            "flags": 0,
+            "hotkeys": {},
+            "id": "text_ft2_source",
+            "mixers": 0,
+            "monitoring_type": 0,
+            "muted": false,
+            "name": "Total uptime...",
+            "push-to-mute": false,
+            "push-to-mute-delay": 0,
+            "push-to-talk": false,
+            "push-to-talk-delay": 0,
+            "settings": {
+                "font": {
+                    "face": "VT323",
+                    "flags": 0,
+                    "size": 34,
+                    "style": "Regular"
+                },
+                "from_file": true,
+                "text_file": "{{.TotalUptimePath}}"
             },
             "sync": 0,
             "volume": 1.0

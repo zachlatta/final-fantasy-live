@@ -36,41 +36,47 @@ func (o *Obs) setup() error {
 }
 
 func (o *Obs) setupTmpFiles() (err error) {
-	nextBtn, err := ioutil.TempFile("", "next-btn-countdown")
-	if err != nil {
-		return err
-	}
-	defer nextBtn.Close()
-
-	o.NextButtonPressPath = nextBtn.Name()
-
-	mostRecentPresses, err := ioutil.TempFile("", "most-recent-presses")
-	if err != nil {
-		return err
-	}
-	defer mostRecentPresses.Close()
-
-	o.MostRecentPressesPath = mostRecentPresses.Name()
-
-	totalPresses, err := ioutil.TempFile("", "total-presses")
+	o.NextButtonPressPath, err = createTmp("next-btn-countdown")
 	if err != nil {
 		return err
 	}
 
-	o.TotalPressesPath = totalPresses.Name()
+	o.VoteBreakdownPath, err = createTmp("vote-breakdown")
+	if err != nil {
+		return err
+	}
+
+	o.MostRecentPressesPath, err = createTmp("most-recent-presses")
+	if err != nil {
+		return err
+	}
+
+	o.TotalPressesPath, err = createTmp("total-presses")
+	if err != nil {
+		return err
+	}
+
+	o.TotalUptimePath, err = createTmp("total-uptime")
+	if err != nil {
+		return err
+	}
 
 	// Set default values
-	if err := o.UpdateNextButtonPress(0); err != nil {
-		return err
-	}
-	if err := o.updateMostRecentPresses(); err != nil {
-		return err
-	}
-	if err := o.updateTotalPresses(); err != nil {
+	if err := o.drawDefaults(); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func createTmp(prefix string) (filename string, err error) {
+	file, err := ioutil.TempFile("", prefix)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	return file.Name(), nil
 }
 
 func (o Obs) setupConfig() error {
@@ -163,6 +169,11 @@ func (o *Obs) cleanupTmpFiles() error {
 	}
 	o.NextButtonPressPath = ""
 
+	if err := os.Remove(o.VoteBreakdownPath); err != nil {
+		return err
+	}
+	o.VoteBreakdownPath = ""
+
 	if err := os.Remove(o.MostRecentPressesPath); err != nil {
 		return err
 	}
@@ -172,6 +183,11 @@ func (o *Obs) cleanupTmpFiles() error {
 		return err
 	}
 	o.TotalPressesPath = ""
+
+	if err := os.Remove(o.TotalUptimePath); err != nil {
+		return err
+	}
+	o.TotalUptimePath = ""
 
 	return nil
 }
