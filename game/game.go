@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	actionInterval = 15
+	actionInterval = 10
 
 	buttonPressTime = 1 * time.Second
 )
@@ -86,19 +86,19 @@ func (g Game) Start() {
 	g.startEmulator()
 }
 
-func (g Game) startObs() {
+func (g *Game) startObs() {
 	if err := g.Obs.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error running OBS:", err)
 		os.Exit(1)
 	}
 }
 
-func (g Game) listenForReactions() {
+func (g *Game) listenForReactions() {
 	ticker := time.NewTicker(1 * time.Second)
 	timer := actionInterval
 
 	for range ticker.C {
-		fmt.Printf("%d...\n", timer)
+		g.Obs.UpdateNextButtonPress(timer)
 		timer -= 1
 
 		if timer == 0 {
@@ -125,11 +125,11 @@ func (g Game) listenForReactions() {
 func reactionToButton(reaction facebook.ReactionType) int {
 	switch reaction {
 	case facebook.ReactionLike:
-		return nes.ButtonUp
-	case facebook.ReactionLove:
-		return nes.ButtonDown
-	case facebook.ReactionHaha:
 		return nes.ButtonLeft
+	case facebook.ReactionLove:
+		return nes.ButtonUp
+	case facebook.ReactionHaha:
+		return nes.ButtonDown
 	case facebook.ReactionWow:
 		return nes.ButtonRight
 	case facebook.ReactionSad:
@@ -166,9 +166,11 @@ func mostCommonReact(reactions []facebook.Reaction) facebook.ReactionType {
 	return mostCommon
 }
 
-func (g Game) handleButtonPresses() {
+func (g *Game) handleButtonPresses() {
 	for action := range g.buttonsToPress {
-		fmt.Printf("Pressing %s....\n", buttonToString[action])
+		g.Obs.IncrementButtonPresses()
+		g.Obs.AddMostRecentPress(buttonToString[action])
+
 		g.Emulator.PlayerOneController.Trigger(action, true)
 		time.Sleep(time.Second / 5)
 		g.Emulator.PlayerOneController.Trigger(action, false)
