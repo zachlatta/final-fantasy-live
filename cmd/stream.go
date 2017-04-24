@@ -11,6 +11,7 @@ import (
 
 var accessToken string
 var romPath string
+var savePath string
 
 var streamCmd = &cobra.Command{
 	Use:   "stream [path to rom to play]",
@@ -36,7 +37,7 @@ var streamCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		game, err := game.New(vid, romPath, accessToken)
+		game, err := game.New(vid, romPath, accessToken, savePath)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error creating game:", err)
 			os.Exit(1)
@@ -49,4 +50,5 @@ var streamCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(streamCmd)
 	streamCmd.Flags().StringVarP(&accessToken, "token", "t", "", "Facebook access token for page to stream from")
+	streamCmd.Flags().StringVarP(&savePath, "save", "s", "./.saves", "The directory to save the state of the emulator")
 }
