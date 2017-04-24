@@ -11,7 +11,7 @@ import (
 
 const baseOauthUrl = "https://www.facebook.com/v2.9/dialog/oauth"
 
-var requiredScopes = []string{"publish_actions", "manage_pages", "publish_pages"}
+var requiredScopes = []string{"publish_actions", "manage_pages", "publish_pages", "user_posts", "user_videos"}
 var responseTypes = []string{"code", "granted_scopes"}
 
 // Handles every step of the login process and returns a long-lived access
