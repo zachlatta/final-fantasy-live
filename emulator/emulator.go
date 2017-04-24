@@ -2,10 +2,12 @@ package emulator
 
 import (
 	"runtime"
+	"time"
 
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.1/glfw"
 	"github.com/gordonklaus/portaudio"
+	"github.com/paked/nes/nes"
 	"github.com/paked/nes/ui"
 )
 
@@ -28,13 +30,16 @@ type Emulator struct {
 	Director *ui.Director
 
 	Settings Settings
+	savePath string
 }
 
-func NewEmulator(settings Settings, controllerOne ui.ControllerAdapter, controllerTwo ui.ControllerAdapter) (*Emulator, error) {
+func NewEmulator(settings Settings, controllerOne ui.ControllerAdapter, controllerTwo ui.ControllerAdapter, savePath string) (*Emulator, error) {
 	e := &Emulator{
 		PlayerOneController: controllerOne,
 		PlayerTwoController: controllerTwo,
 		Settings:            settings,
+
+		savePath: savePath,
 	}
 
 	return e, nil
@@ -78,9 +83,31 @@ func (e *Emulator) Play(romPath string) error {
 
 	e.Director = ui.NewDirector(window, audio, e.PlayerOneController, e.PlayerTwoController)
 
+	go func() {
+		time.Sleep(time.Second)
+
+		e.LoadState(e.savePath)
+	}()
+
 	e.Director.Start([]string{romPath})
 
 	return nil
+}
+
+func (e *Emulator) SaveState(path string) error {
+	c := e.console()
+
+	return c.SaveState(path)
+}
+
+func (e *Emulator) LoadState(path string) error {
+	c := e.console()
+
+	return c.LoadState(path)
+}
+
+func (e *Emulator) console() *nes.Console {
+	return e.Director.Console()
 }
 
 type Settings struct {

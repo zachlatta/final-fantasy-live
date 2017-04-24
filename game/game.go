@@ -1,8 +1,11 @@
 package game
 
 import (
+	"crypto/md5"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/paked/nes/nes"
@@ -33,6 +36,7 @@ var buttonToString = map[int]string{
 type Game struct {
 	Video       facebook.LiveVideo
 	RomPath     string
+	SavePath    string
 	AccessToken string
 	Emulator    *emulator.Emulator
 	Obs         obs.Obs
@@ -43,7 +47,7 @@ type Game struct {
 	lastCommentTime time.Time
 }
 
-func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, error) {
+func New(vid facebook.LiveVideo, romPath string, accessToken string, savePath string) (Game, error) {
 	playerOne := ui.NewKeyboardControllerAdapter()
 	playerTwo := &ui.DummyControllerAdapter{}
 
@@ -51,6 +55,7 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, erro
 		emulator.DefaultSettings,
 		playerOne,
 		playerTwo,
+		nesSaveFilePath(savePath, romPath),
 	)
 
 	if err != nil {
@@ -62,6 +67,7 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, erro
 	return Game{
 		Video:       vid,
 		RomPath:     romPath,
+		SavePath:    savePath,
 		AccessToken: accessToken,
 		Emulator:    e,
 		Obs:         obs.New(streamUrl, streamKey),
@@ -73,7 +79,7 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string) (Game, erro
 	}, nil
 }
 
-func (g Game) Start() {
+func (g *Game) Start() {
 	fmt.Println("Stream created!")
 	fmt.Println("ID:", g.Video.Id)
 	fmt.Println("Direct your stream to:", g.Video.StreamUrl)
@@ -81,9 +87,28 @@ func (g Game) Start() {
 	go g.startObs()
 	go g.listenForReactions()
 	go g.handleButtonPresses()
+	go g.continuoslySave()
 
 	// Emulator must be on main thread
 	g.startEmulator()
+}
+
+func (g *Game) Save() error {
+	err := g.Emulator.SaveState(g.SavePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *Game) Load() error {
+	err := g.Emulator.LoadState(g.SavePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g *Game) startObs() {
@@ -177,6 +202,28 @@ func (g *Game) handleButtonPresses() {
 	}
 }
 
-func (g Game) startEmulator() {
+func (g *Game) startEmulator() {
 	g.Emulator.Play(g.RomPath)
+}
+
+func (g *Game) continuoslySave() {
+	c := time.Tick(1 * time.Minute)
+	for range c {
+		path := nesSaveFilePath(g.SavePath, g.RomPath)
+
+		fmt.Println("Saving NES's game state to:", path)
+		g.Emulator.SaveState(path)
+		fmt.Println("Finished saving...")
+	}
+}
+
+func nesSaveFilePath(savePath, romPath string) string {
+	return filepath.Join(savePath, romPathHash(romPath), "save.dat")
+}
+
+func romPathHash(romPath string) string {
+	h := md5.New()
+	io.WriteString(h, romPath)
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
