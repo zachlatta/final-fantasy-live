@@ -51,6 +51,11 @@ func (o *Obs) setupTmpFiles() (err error) {
 		return err
 	}
 
+	o.ActivePlayersPath, err = createTmp("active-players")
+	if err != nil {
+		return err
+	}
+
 	o.TotalPressesPath, err = createTmp("total-presses")
 	if err != nil {
 		return err
@@ -178,6 +183,11 @@ func (o *Obs) cleanupTmpFiles() error {
 		return err
 	}
 	o.MostRecentPressesPath = ""
+
+	if err := os.Remove(o.ActivePlayersPath); err != nil {
+		return err
+	}
+	o.ActivePlayersPath = ""
 
 	if err := os.Remove(o.TotalPressesPath); err != nil {
 		return err

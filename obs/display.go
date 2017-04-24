@@ -19,6 +19,9 @@ func (o *Obs) drawDefaults() error {
 	if err := o.UpdateVoteBreakdown(map[int]int{}); err != nil {
 		return err
 	}
+	if err := o.UpdateActivePlayers(0); err != nil {
+		return err
+	}
 	if err := o.updateMostRecentPresses(); err != nil {
 		return err
 	}
@@ -38,16 +41,21 @@ func (o *Obs) UpdateNextButtonPress(secondsRemaining int) error {
 }
 
 func (o *Obs) UpdateVoteBreakdown(breakdown map[int]int) error {
+	displayOrder := []int{
+		nes.ButtonUp, nes.ButtonLeft, nes.ButtonA,
+		nes.ButtonDown, nes.ButtonRight, nes.ButtonB,
+	}
+
+	values := make([]interface{}, len(displayOrder))
+	for i, btn := range displayOrder {
+		values[i] = padCount(breakdown[btn])
+	}
+
 	str := fmt.Sprintf(`Current votes:
 
-  UP: %s  DOWN: %s
-LEFT: %s RIGHT: %s
-   B: %s     A: %s
-`,
-		padCount(breakdown[nes.ButtonUp]), padCount(breakdown[nes.ButtonDown]),
-		padCount(breakdown[nes.ButtonLeft]), padCount(breakdown[nes.ButtonRight]),
-		padCount(breakdown[nes.ButtonB]), padCount(breakdown[nes.ButtonA]),
-	)
+  UP: %s  LEFT: %s A: %s
+DOWN: %s RIGHT: %s B: %s
+`, values...)
 
 	return ioutil.WriteFile(o.VoteBreakdownPath, []byte(str), os.ModePerm)
 }
@@ -75,6 +83,12 @@ func (o *Obs) updateMostRecentPresses() error {
 		[]byte(fmt.Sprintf("Most recent presses:\n%s", strings.Join(o.mostRecentPresses, ", "))),
 		os.ModePerm,
 	)
+}
+
+func (o *Obs) UpdateActivePlayers(count int) error {
+	str := fmt.Sprintf("Active players: %d", count)
+
+	return ioutil.WriteFile(o.ActivePlayersPath, []byte(str), os.ModePerm)
 }
 
 func (o *Obs) IncrementButtonPresses() error {

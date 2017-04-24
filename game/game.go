@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	actionInterval = 10
-	pollInterval   = 2 * time.Second
+	actionInterval   = 10
+	pollInterval     = 2 * time.Second
+	inactivityCutoff = 1 * time.Minute
 
 	buttonPressTime = 1 * time.Second
 )
@@ -42,8 +43,11 @@ type Game struct {
 	Emulator    *emulator.Emulator
 	Obs         obs.Obs
 
-	startTime      time.Time
-	reactionCounts map[facebook.ReactionType]int
+	startTime time.Time
+
+	// Key is user ID
+	reactions         map[string]facebook.Reaction
+	lastUserReactions map[string]time.Time
 
 	buttonsToPress chan int
 
@@ -76,7 +80,8 @@ func New(vid facebook.LiveVideo, romPath string, accessToken string, savePath st
 		Emulator:    e,
 		Obs:         obs.New(streamUrl, streamKey),
 
-		reactionCounts: map[facebook.ReactionType]int{},
+		reactions:         map[string]facebook.Reaction{},
+		lastUserReactions: map[string]time.Time{},
 
 		buttonsToPress: make(chan int),
 
@@ -137,11 +142,25 @@ func (g *Game) pollForReactions() {
 			os.Exit(1)
 		}
 
-		g.reactionCounts = reactionCounts(reactions)
+		// Update g.lastUserReactions
+		for _, reaction := range reactions {
+			lastReaction := g.reactions[reaction.AuthorId]
+
+			if lastReaction != reaction {
+				g.lastUserReactions[reaction.AuthorId] = time.Now()
+			}
+		}
+
+		// Update g.reactions
+		reactionMap := map[string]facebook.Reaction{}
+		for _, reaction := range reactions {
+			reactionMap[reaction.AuthorId] = reaction
+		}
+		g.reactions = reactionMap
 
 		// Update vote breakdown
 		buttonVoteMap := map[int]int{}
-		for reactionType, count := range g.reactionCounts {
+		for reactionType, count := range g.reactionCounts(true) {
 			buttonVoteMap[reactionToButton(reactionType)] = count
 		}
 		if err := g.Obs.UpdateVoteBreakdown(buttonVoteMap); err != nil {
@@ -158,13 +177,14 @@ func (g *Game) buttonCountdown() {
 	for range ticker.C {
 		g.Obs.UpdateNextButtonPress(timer)
 		g.Obs.UpdateTotalUptime(g.startTime, time.Now())
+		g.Obs.UpdateActivePlayers(len(g.activePlayers()))
 
 		timer -= 1
 
 		if timer == 0 {
 			timer = actionInterval
 
-			mostCommonReact := mostCommonReact(g.reactionCounts)
+			mostCommonReact := mostCommonReact(g.reactionCounts(true))
 			if mostCommonReact == -1 {
 				fmt.Println("No reactions. Skipping button press.")
 				continue
@@ -173,6 +193,38 @@ func (g *Game) buttonCountdown() {
 			g.buttonsToPress <- reactionToButton(mostCommonReact)
 		}
 	}
+}
+
+func (g Game) activePlayers() map[string]struct{} {
+	activeIds := map[string]struct{}{}
+
+	for userId, lastReactionTime := range g.lastUserReactions {
+		// cutoff = current time - inactivity cutoff
+		cutoff := time.Now().Add(-inactivityCutoff)
+
+		if lastReactionTime.After(cutoff) {
+			activeIds[userId] = struct{}{}
+		}
+	}
+
+	return activeIds
+}
+
+func (g Game) reactionCounts(onlyIncludeActive bool) map[facebook.ReactionType]int {
+	countMap := map[facebook.ReactionType]int{}
+	activeUserIds := g.activePlayers()
+
+	for userId, reaction := range g.reactions {
+		if onlyIncludeActive {
+			if _, present := activeUserIds[userId]; present == true {
+				countMap[reaction.Type] += 1
+			}
+		} else {
+			countMap[reaction.Type] += 1
+		}
+	}
+
+	return countMap
 }
 
 func reactionToButton(reaction facebook.ReactionType) int {
@@ -192,15 +244,6 @@ func reactionToButton(reaction facebook.ReactionType) int {
 	default:
 		return -1
 	}
-}
-
-func reactionCounts(reactions []facebook.Reaction) map[facebook.ReactionType]int {
-	countMap := map[facebook.ReactionType]int{}
-	for _, reaction := range reactions {
-		countMap[reaction.Type] += 1
-	}
-
-	return countMap
 }
 
 // Returns the most common reaction given an array of them

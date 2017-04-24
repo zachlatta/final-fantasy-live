@@ -11,6 +11,7 @@ type Obs struct {
 	NextButtonPressPath   string
 	VoteBreakdownPath     string
 	MostRecentPressesPath string
+	ActivePlayersPath     string
 	TotalPressesPath      string
 	TotalUptimePath       string
 
