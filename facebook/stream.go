@@ -30,6 +30,10 @@ func CreateLiveVideo(accessToken string) (vid LiveVideo, err error) {
 
 	res, err := fb.Post(fmt.Sprintf("/%s/live_videos", id), fb.Params{
 		"access_token": accessToken,
+
+		// Makes the live video support unlimited streaming. Usually live streaming
+		// cuts off after 24 hours.
+		"stream_type": "AMBIENT",
 	})
 	if err != nil {
 		return vid, err
