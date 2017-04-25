@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/zachlatta/nostalgic-rewind/facebook"
 	"github.com/zachlatta/nostalgic-rewind/game"
+	"github.com/zachlatta/nostalgic-rewind/util"
 )
 
 var accessToken string
@@ -66,13 +69,46 @@ var playStreamCmd = &cobra.Command{
 
 		fmt.Printf("Starting %s...\n", romPath)
 
-		game, err := game.New(vid, romPath, accessToken, savePath)
+		spath := filepath.Join(savePath, util.MD5HashString(romPath), game.GameSavePath)
+
+		var g game.Game
+
+		ok, err := util.FileExists(spath)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating game:", err)
+			fmt.Fprintln(os.Stderr, "Wasn't able to check if a file existed", err)
 			os.Exit(1)
 		}
 
-		game.Start()
+		if ok {
+			fmt.Println("Loading game from save...")
+
+			var save game.Save
+			f, err := os.Open(spath)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error loading save", err)
+				os.Exit(1)
+			}
+
+			if err := json.NewDecoder(f).Decode(&save); err != nil {
+				fmt.Fprintln(os.Stderr, "Error decoding game save", err)
+				os.Exit(1)
+			}
+
+			g, err = game.NewFromSave(save, vid, accessToken)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error creating game:", err)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("Loading game without existing save")
+			g, err = game.New(vid, romPath, accessToken, savePath)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error creating game:", err)
+				os.Exit(1)
+			}
+		}
+
+		g.Start()
 	},
 }
 

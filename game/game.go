@@ -1,9 +1,8 @@
 package game
 
 import (
-	"crypto/md5"
+	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +16,8 @@ import (
 )
 
 const (
+	GameSavePath = "game.json"
+
 	actionInterval   = 10
 	pollInterval     = 2 * time.Second
 	inactivityCutoff = 1 * time.Minute
@@ -36,14 +37,14 @@ var buttonToString = map[int]string{
 }
 
 type Game struct {
-	Video       facebook.LiveVideo
+	Video       facebook.LiveVideo `json:"-"`
 	RomPath     string
 	SavePath    string
 	AccessToken string
-	Emulator    *emulator.Emulator
+	Emulator    *emulator.Emulator `json:"-"`
 	Obs         obs.Obs
 
-	startTime time.Time
+	startTime time.Time `json: "startTime"`
 
 	// Key is user ID
 	reactions         map[string]facebook.Reaction
@@ -53,6 +54,44 @@ type Game struct {
 
 	comments        chan facebook.Comment
 	lastCommentTime time.Time
+}
+
+func NewFromSave(save Save, vid facebook.LiveVideo, accessToken string) (Game, error) {
+	romPath := save.RomPath
+	savePath := save.SavePath
+
+	playerOne := ui.NewKeyboardControllerAdapter()
+	playerTwo := &ui.DummyControllerAdapter{}
+
+	e, err := emulator.NewEmulator(
+		emulator.DefaultSettings,
+		playerOne,
+		playerTwo,
+		nesSaveFilePath(savePath, romPath),
+	)
+
+	if err != nil {
+		return Game{}, err
+	}
+
+	streamUrl, streamKey := util.SplitStreamUrl(vid.StreamUrl)
+
+	return Game{
+		Video:       vid,
+		RomPath:     romPath,
+		SavePath:    savePath,
+		AccessToken: accessToken,
+		Emulator:    e,
+		Obs:         obs.New(streamUrl, streamKey),
+
+		reactions:         save.PastReactions,
+		lastUserReactions: save.LastUserReactions,
+
+		buttonsToPress: make(chan int),
+
+		comments:        make(chan facebook.Comment),
+		lastCommentTime: time.Now(),
+	}, nil
 }
 
 func New(vid facebook.LiveVideo, romPath string, accessToken string, savePath string) (Game, error) {
@@ -108,12 +147,37 @@ func (g *Game) Start() {
 }
 
 func (g *Game) Save() error {
-	err := g.Emulator.SaveState(g.SavePath)
+	epath := nesSaveFilePath(g.SavePath, g.RomPath)
+	err := g.Emulator.SaveState(epath)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	save := Save{
+		PastReactions:     g.reactions,
+		LastUserReactions: g.lastUserReactions,
+		RomPath:           g.RomPath,
+		SavePath:          g.SavePath,
+	}
+
+	fpath := filepath.Join(g.SavePath, util.MD5HashString(g.RomPath), GameSavePath)
+
+	var f *os.File
+
+	// Check if file doesn't exist
+	if ok, err := util.FileExists(fpath); !ok || err != nil {
+		f, err = os.Create(fpath)
+	} else {
+		f, err = os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = json.NewEncoder(f).Encode(save)
+
+	return err
 }
 
 func (g *Game) Load() error {
@@ -288,18 +352,18 @@ func (g *Game) continuoslySave() {
 		path := nesSaveFilePath(g.SavePath, g.RomPath)
 
 		fmt.Println("Saving NES's game state to:", path)
-		g.Emulator.SaveState(path)
+		g.Save()
 		fmt.Println("Finished saving...")
 	}
 }
 
 func nesSaveFilePath(savePath, romPath string) string {
-	return filepath.Join(savePath, romPathHash(romPath), "save.dat")
+	return filepath.Join(savePath, util.MD5HashString(romPath), "save.dat")
 }
 
-func romPathHash(romPath string) string {
-	h := md5.New()
-	io.WriteString(h, romPath)
-
-	return fmt.Sprintf("%x", h.Sum(nil))
+type Save struct {
+	PastReactions     map[string]facebook.Reaction `json:"past_reactions"`
+	LastUserReactions map[string]time.Time         `json:"last_user_reactions"`
+	RomPath           string                       `json:"rom_path"`
+	SavePath          string                       `json:"save_path"`
 }
